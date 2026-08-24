@@ -8,7 +8,7 @@ import teamArtLead from "../assets/avatar-artlead.jpg";
 import gameDragonDragoon from "../assets/game-dragon-dragoon.jpg";
 import gameKingdomCrash from "../assets/game-kingdom-crash.jpg";
 import gameBattleStage from "../assets/game-battle-stage.jpg";
-import logoAsset from "../assets/ctrl-games-logo.png.asset.json";
+import logoAsset from "../assets/ctrl-games-logo.png";
 
 import { COMPANY, CONTENT, LOCALES, LOCALE_LABELS, LOCALE_PATHS, type Locale } from "../i18n/content";
 
