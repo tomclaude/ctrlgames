@@ -8,7 +8,7 @@ import teamArtLead from "../assets/avatar-artlead.jpg";
 import gameDragonDragoon from "../assets/game-dragon-dragoon.jpg";
 import gameKingdomCrash from "../assets/game-kingdom-crash.jpg";
 import gameBattleStage from "../assets/game-battle-stage.jpg";
-import logoAsset from "../assets/ctrl-games-logo.png.asset.json";
+import logoAsset from "../assets/ctrl-games-logo.png";
 
 import { COMPANY, CONTENT, LOCALES, LOCALE_LABELS, LOCALE_PATHS, type Locale } from "../i18n/content";
 
@@ -24,7 +24,7 @@ export function SiteHome({ locale }: { locale: Locale }) {
       <nav className="fixed top-0 w-full z-50 border-b border-zinc-900 bg-brand-ink/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
           <a href="#top" className="flex items-center gap-2">
-            <img src={logoAsset.url} alt="CTRL Games Limited logo" width={146} height={62} className="h-7 w-auto" />
+            <img src={logo} alt="CTRL Games Limited logo" width={146} height={62} className="h-7 w-auto" />
           </a>
           <div className="hidden md:flex items-center gap-8">
             <a href="#studio" className="text-sm font-medium text-zinc-400 hover:text-zinc-100 transition-colors">
