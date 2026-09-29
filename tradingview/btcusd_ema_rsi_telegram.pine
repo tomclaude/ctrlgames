@@ -1,4 +1,4 @@
-//@version=5
+//@version=6
 // BTCUSD 15 分鐘 EMA20/EMA50 + RSI 策略，訊號透過 TradingView Webhook 直接推送到 Telegram Bot。
 // 做多：EMA20 向上突破 EMA50 且 RSI > 50
 // 平倉：EMA20 向下跌破 EMA50

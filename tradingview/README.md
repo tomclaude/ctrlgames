@@ -1,6 +1,6 @@
 # BTCUSD 15m EMA20/50 + RSI → Telegram
 
-檔案：`btcusd_ema_rsi_telegram.pine`（Pine Script v5 策略）
+檔案：`btcusd_ema_rsi_telegram.pine`（Pine Script v6 策略）
 
 | 訊號 | 條件 |
 | --- | --- |
