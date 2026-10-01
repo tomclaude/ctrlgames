@@ -1,58 +1,88 @@
 //@version=6
-// BTCUSD 15 分鐘 EMA20/EMA50 + RSI 策略，訊號透過 TradingView Webhook 直接推送到 Telegram Bot。
-// 做多：EMA20 向上突破 EMA50 且 RSI > 50
-// 平倉：EMA20 向下跌破 EMA50
-// 設定步驟見同目錄 README.md
+// BTCUSD 15 分鐘 均線交叉 + RSI 策略，訊號透過 TradingView Webhook 直接推送到 Telegram Bot。
+// 做多：快線向上突破慢線 且 RSI > 50（可選：ADX 過濾、VWAP 過濾）
+// 平倉：快線向下跌破慢線
+// 均線類型可選 EMA 或 Hull MA。設定步驟見同目錄 README.md
 strategy("BTCUSD 15m EMA20/50 + RSI → Telegram", shorttitle = "EMA-RSI TG", overlay = true,
      initial_capital = 10000, default_qty_type = strategy.percent_of_equity, default_qty_value = 100,
      commission_type = strategy.commission.percent, commission_value = 0.1, slippage = 1, pyramiding = 0)
 
 // ───── 參數 ─────
-fastLen   = input.int(20, "快線 EMA", minval = 1, group = "指標")
-slowLen   = input.int(50, "慢線 EMA", minval = 1, group = "指標")
+maType    = input.string("EMA", "均線類型", options = ["EMA", "Hull MA"], group = "指標")
+fastLen   = input.int(20, "快線週期", minval = 1, group = "指標")
+slowLen   = input.int(50, "慢線週期", minval = 1, group = "指標")
 rsiLen    = input.int(14, "RSI 週期", minval = 1, group = "指標")
 rsiThresh = input.float(50, "RSI 門檻（做多需大於）", group = "指標")
 enforceTf = input.bool(true, "只在 15 分鐘圖產生訊號", group = "指標")
+
+useAdx    = input.bool(false, "啟用 ADX 過濾", group = "過濾（只影響做多進場）",
+     tooltip = "ADX 高於門檻才進場，用來避開盤整時的假交叉。")
+adxLen    = input.int(14, "ADX 週期", minval = 1, group = "過濾（只影響做多進場）")
+adxThresh = input.float(20, "ADX 門檻（需大於）", minval = 0, group = "過濾（只影響做多進場）")
+useVwap   = input.bool(false, "啟用 VWAP 過濾", group = "過濾（只影響做多進場）",
+     tooltip = "收盤價高於當日 VWAP 才進場。VWAP 依交易所的日線時段重設（Binance 為 UTC 00:00）。")
 
 chatId    = input.string("", "Telegram Chat ID", group = "Telegram",
      tooltip = "私人聊天為正數；群組 / 頻道通常為 -100 開頭。Bot Token 不寫在這裡，而是放在警報的 Webhook URL 中。")
 msgTz     = input.string("UTC+8", "訊息時間時區", group = "Telegram")
 
 // ───── 指標 ─────
-emaFast = ta.ema(close, fastLen)
-emaSlow = ta.ema(close, slowLen)
-rsi     = ta.rsi(close, rsiLen)
+// 兩種均線都每根 K 線計算，再依設定選用，避免條件式呼叫 ta.* 造成計算不一致
+ma(float src, int len) =>
+    float hma = ta.hma(src, len)
+    float ema = ta.ema(src, len)
+    maType == "Hull MA" ? hma : ema
+
+maFast = ma(close, fastLen)
+maSlow = ma(close, slowLen)
+rsi    = ta.rsi(close, rsiLen)
+[diPlus, diMinus, adx] = ta.dmi(adxLen, adxLen)
+vwapVal = ta.vwap(hlc3)
+
+// 先在全域計算交叉，確保每根 K 線都會更新（v6 的 and/or 為短路求值）
+bullCross = ta.crossover(maFast, maSlow)
+bearCross = ta.crossunder(maFast, maSlow)
 
 tfOk       = not enforceTf or timeframe.period == "15"
-longSignal = ta.crossover(emaFast, emaSlow) and rsi > rsiThresh and tfOk
-exitSignal = ta.crossunder(emaFast, emaSlow) and tfOk
+adxOk      = not useAdx or adx > adxThresh
+vwapOk     = not useVwap or close > vwapVal
+longSignal = bullCross and rsi > rsiThresh and adxOk and vwapOk and tfOk
+exitSignal = bearCross and tfOk
 
 // ───── Telegram JSON（Telegram sendMessage API 格式）─────
+maName = maType == "Hull MA" ? "HMA" : "EMA"
+
 tgPayload(string title) =>
     string txt = title +
          "\\n商品: " + syminfo.tickerid +
          "\\n週期: " + timeframe.period + "m" +
          "\\n價格: " + str.tostring(close, format.mintick) +
-         "\\nEMA" + str.tostring(fastLen) + ": " + str.tostring(emaFast, format.mintick) +
-         " / EMA" + str.tostring(slowLen) + ": " + str.tostring(emaSlow, format.mintick) +
+         "\\n" + maName + str.tostring(fastLen) + ": " + str.tostring(maFast, format.mintick) +
+         " / " + maName + str.tostring(slowLen) + ": " + str.tostring(maSlow, format.mintick) +
          "\\nRSI(" + str.tostring(rsiLen) + "): " + str.tostring(rsi, "#.##") +
+         "\\nADX(" + str.tostring(adxLen) + "): " + str.tostring(adx, "#.##") +
+         "\\nVWAP: " + str.tostring(vwapVal, format.mintick) +
          "\\n時間: " + str.format_time(time_close, "yyyy-MM-dd HH:mm", msgTz)
     '{"chat_id": "' + chatId + '", "text": "' + txt + '"}'
 
 // ───── 下單 + 發送警報 ─────
 if longSignal and strategy.position_size == 0
-    strategy.entry("Long", strategy.long, comment = "EMA 金叉 + RSI")
+    strategy.entry("Long", strategy.long, comment = maName + " 金叉 + RSI")
     alert(tgPayload("🟢 做多訊號 LONG"), alert.freq_once_per_bar_close)
 
 if exitSignal and strategy.position_size > 0
-    strategy.close("Long", comment = "EMA 死叉平倉")
+    strategy.close("Long", comment = maName + " 死叉平倉")
     alert(tgPayload("🔴 平倉訊號 EXIT"), alert.freq_once_per_bar_close)
 
 // ───── 圖表 ─────
-plot(emaFast, "EMA 快線", color = color.new(color.orange, 0), linewidth = 2)
-plot(emaSlow, "EMA 慢線", color = color.new(color.blue, 0), linewidth = 2)
+plot(maFast, "快線", color = color.new(color.orange, 0), linewidth = 2)
+plot(maSlow, "慢線", color = color.new(color.blue, 0), linewidth = 2)
+plot(useVwap ? vwapVal : na, "VWAP", color = color.new(color.purple, 0), linewidth = 1, style = plot.style_linebr)
 plotshape(longSignal, "做多", shape.triangleup, location.belowbar, color.new(color.green, 0), size = size.small, text = "LONG")
 plotshape(exitSignal, "平倉", shape.triangledown, location.abovebar, color.new(color.red, 0), size = size.small, text = "EXIT")
+// 被過濾掉的金叉：方便目視檢查過濾條件擋掉了哪些訊號
+plotshape(bullCross and rsi > rsiThresh and tfOk and not longSignal, "被過濾的金叉", shape.xcross, location.belowbar,
+     color.new(color.gray, 0), size = size.tiny)
 
 // 設定提醒：未填 Chat ID 或不是 15 分鐘圖時在右上角顯示
 var table warn = table.new(position.top_right, 1, 1)
