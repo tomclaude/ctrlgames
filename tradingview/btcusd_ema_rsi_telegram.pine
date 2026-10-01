@@ -53,16 +53,16 @@ exitSignal = bearCross and tfOk
 maName = maType == "Hull MA" ? "HMA" : "EMA"
 
 tgPayload(string title) =>
-    string txt = title +
-         "\\n商品: " + syminfo.tickerid +
-         "\\n週期: " + timeframe.period + "m" +
-         "\\n價格: " + str.tostring(close, format.mintick) +
-         "\\n" + maName + str.tostring(fastLen) + ": " + str.tostring(maFast, format.mintick) +
-         " / " + maName + str.tostring(slowLen) + ": " + str.tostring(maSlow, format.mintick) +
-         "\\nRSI(" + str.tostring(rsiLen) + "): " + str.tostring(rsi, "#.##") +
-         "\\nADX(" + str.tostring(adxLen) + "): " + str.tostring(adx, "#.##") +
-         "\\nVWAP: " + str.tostring(vwapVal, format.mintick) +
-         "\\n時間: " + str.format_time(time_close, "yyyy-MM-dd HH:mm", msgTz)
+    string txt = title
+    txt += "\\n商品: " + syminfo.tickerid
+    txt += "\\n週期: " + timeframe.period + "m"
+    txt += "\\n價格: " + str.tostring(close, format.mintick)
+    txt += "\\n" + maName + str.tostring(fastLen) + ": " + str.tostring(maFast, format.mintick)
+    txt += " / " + maName + str.tostring(slowLen) + ": " + str.tostring(maSlow, format.mintick)
+    txt += "\\nRSI(" + str.tostring(rsiLen) + "): " + str.tostring(rsi, "#.##")
+    txt += "\\nADX(" + str.tostring(adxLen) + "): " + str.tostring(adx, "#.##")
+    txt += "\\nVWAP: " + str.tostring(vwapVal, format.mintick)
+    txt += "\\n時間: " + str.format_time(time_close, "yyyy-MM-dd HH:mm", msgTz)
     '{"chat_id": "' + chatId + '", "text": "' + txt + '"}'
 
 // ───── 下單 + 發送警報 ─────
@@ -81,8 +81,7 @@ plot(useVwap ? vwapVal : na, "VWAP", color = color.new(color.purple, 0), linewid
 plotshape(longSignal, "做多", shape.triangleup, location.belowbar, color.new(color.green, 0), size = size.small, text = "LONG")
 plotshape(exitSignal, "平倉", shape.triangledown, location.abovebar, color.new(color.red, 0), size = size.small, text = "EXIT")
 // 被過濾掉的金叉：方便目視檢查過濾條件擋掉了哪些訊號
-plotshape(bullCross and rsi > rsiThresh and tfOk and not longSignal, "被過濾的金叉", shape.xcross, location.belowbar,
-     color.new(color.gray, 0), size = size.tiny)
+plotshape(bullCross and rsi > rsiThresh and tfOk and not longSignal, "被過濾的金叉", shape.xcross, location.belowbar, color.new(color.gray, 0), size = size.tiny)
 
 // 設定提醒：未填 Chat ID 或不是 15 分鐘圖時在右上角顯示
 var table warn = table.new(position.top_right, 1, 1)
